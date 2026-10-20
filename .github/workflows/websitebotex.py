@@ -193,11 +193,23 @@ try:
             print("After waiting for start/stop:\n"+driver.current_url)
             driver.quit()
             sys.exit()
-    # Now ensure it’s clickable
+    # Now ensure it’s clickable — but give the page time to fully hydrate first
+    time.sleep(5)
     driver.execute_script("arguments[0].scrollIntoView(true);", startworld)
-    driver.execute_script("arguments[0].click();", startworld)
-    print("Clicked start")
+    try:
+        startworld.click()  # native click = real mouse event at element center
+        print("Clicked start (native)")
+    except Exception:
+        driver.execute_script("arguments[0].click();", startworld)
+        print("Clicked start (js fallback)")
     time.sleep(2)
+    for i in range(6):
+        time.sleep(5)
+        try:
+            body_text = driver.find_element(By.TAG_NAME, "body").text
+            print(f"+{(i+1)*5}s STATE:", " | ".join(body_text.split("\n")[:14])[:400])
+        except Exception as e:
+            print("state read error:", e)
 
 except Exception as e:
     print(f"Error occurred(start): {e}")
@@ -241,7 +253,9 @@ try:
     print("DEBUG PAGE URL:", driver.current_url)
     print("ALL BUTTONS:")
     for b in driver.find_elements(By.TAG_NAME, "button"):
-        print("  -", (b.text or "?").strip()[:60])
+        print("  -", (b.text or "?").strip()[:60], "| ab:", (b.get_attribute("aria-label") or "")[:40], "| cls:", (b.get_attribute("class") or "")[:90])
+    print("PAGE TEXT (first 2000 chars):")
+    print(driver.find_element(By.TAG_NAME, "body").text[:2000])
 except Exception as e:
     print("debug dump error:", e)
 driver.quit()

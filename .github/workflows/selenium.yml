@@ -111,6 +111,17 @@ jobs:
           PASSWORD: ${{ secrets.PASSWORD }}
         run: python .github/workflows/websitebotstop.py
 
+      - name: Upload debug capture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-capture
+          path: |
+            debug_start.png
+            debug_stop.png
+            page_source.html
+          if-no-files-found: ignore
+
       - name: Check for new session
         if: ${{ inputs.use_session_cache == 'true' }}
         id: session-check
