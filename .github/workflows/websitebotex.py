@@ -155,6 +155,10 @@ except:
     # Write that Llogin flow has occured
     with open(MARKER_FILE, "w") as f:
         f.write("session valid")
+
+driver.get("https://seedloaf.com/dashboard")
+time.sleep(6)
+print("NOW AT:", driver.current_url)
     
 
 #---------------------------
@@ -162,7 +166,7 @@ try:
     # Wait for the start button to be visible
     try:
         wait = WebDriverWait(driver, 20)
-        startworld = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btn-primary")))
+        startworld = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[normalize-space()='Start World' or normalize-space()='Unarchive']")))
         print("After waiting for start:\n"+driver.current_url)
     except:
         try: # Check if password is incorrect or stop button is already present
@@ -230,4 +234,14 @@ except Exception:
 for entry in driver.get_log('browser'):
     print(entry)
 '''
+try:
+    driver.get_screenshot_as_file("debug_start.png")
+    with open("page_source.html", "w", encoding="utf-8") as f:
+        f.write(driver.page_source)
+    print("DEBUG PAGE URL:", driver.current_url)
+    print("ALL BUTTONS:")
+    for b in driver.find_elements(By.TAG_NAME, "button"):
+        print("  -", (b.text or "?").strip()[:60])
+except Exception as e:
+    print("debug dump error:", e)
 driver.quit()
