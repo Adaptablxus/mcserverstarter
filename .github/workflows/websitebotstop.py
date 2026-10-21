@@ -186,7 +186,7 @@ try:
         time.sleep(5)  # let React hydrate the card
         wait = WebDriverWait(driver, 20)
         stopworld = wait.until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'btn-error') and not(@disabled)]"))
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'btn-error') and contains(@class, 'join-item') and not(@disabled)]"))
         )
         print("After waiting for stop:\n"+driver.current_url)
     except:
@@ -228,6 +228,21 @@ try:
     except Exception:
         driver.execute_script("arguments[0].click();", stopworld)
         print("Clicked stop (js fallback)")
+    time.sleep(2)
+    # The stop click opens a confirm dialog with a "Force stop" button — click it
+    try:
+        forcestop = WebDriverWait(driver, 8).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[normalize-space()='Force stop']"))
+        )
+        try:
+            forcestop.click()
+            print("Clicked force stop (native)")
+        except Exception:
+            driver.execute_script("arguments[0].click();", forcestop)
+            print("Clicked force stop (js fallback)")
+    except Exception as e:
+        print(f"No Force stop modal: {e}")
+        dump_debug()
     time.sleep(2)
     for i in range(6):
         time.sleep(5)
