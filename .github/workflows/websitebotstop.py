@@ -160,16 +160,37 @@ except:
     
 
 #---------------------------
-try:
-    # Wait for the stop button to be visible
+# Force-jump to the dashboard (post-login redirect can land elsewhere)
+driver.get("https://seedloaf.com/dashboard")
+time.sleep(6)
+print("NOW AT:", driver.current_url)
+
+def dump_debug():
     try:
+        driver.get_screenshot_as_file("debug_stop.png")
+        with open("page_source.html", "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
+        print("DEBUG PAGE URL:", driver.current_url)
+        print("ALL BUTTONS:")
+        for b in driver.find_elements(By.TAG_NAME, "button"):
+            print("  -", (b.text or "?").strip()[:60], "| ab:", (b.get_attribute("aria-label") or "")[:40], "| cls:", (b.get_attribute("class") or "")[:90])
+        print("PAGE TEXT (first 1500 chars):")
+        print(driver.find_element(By.TAG_NAME, "body").text[:1500])
+    except Exception as e:
+        print("debug dump error:", e)
+
+#---------------------------
+try:
+    # Wait for the stop button to be present AND clickable (not disabled)
+    try:
+        time.sleep(5)  # let React hydrate the card
         wait = WebDriverWait(driver, 20)
-        stopworld = WebDriverWait(driver, 5).until(
-                        EC.visibility_of_element_located((By.XPATH, "//button[contains(@class, 'btn-error')]"))
-                    )
+        stopworld = wait.until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'btn-error') and not(@disabled)]"))
+        )
         print("After waiting for stop:\n"+driver.current_url)
     except:
-        try: # Check if password is incorrect or start button is already present
+        try: # Check if password is incorrect, world already stopped, or still starting
             if  ran_loginflow and driver.current_url == old_url:
                 error_elem = WebDriverWait(driver, 5).until(EC.visibility_of_element_located((By.ID, "error-password")))
                 if error_elem:
@@ -178,27 +199,46 @@ try:
                     sys.exit()
             else:
                 try:
-                    startworld = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btn-primary")))
-                    print("Start button found — world already stopped.")
+                    body_text = driver.find_element(By.TAG_NAME, "body").text
+                    if "Starting" in body_text:
+                        print("World is still starting - stop again in a minute.")
+                        dump_debug()
+                        driver.quit()
+                        sys.exit()
+                    startworld = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[normalize-space()='Start World' or normalize-space()='Unarchive']")))
+                    print("Start button found - world already stopped.")
                     driver.quit()
                     sys.exit()
                 except Exception as e:
                     print(f"Neither Start nor Stop button found. Something might be wrong: {e}")
+                    dump_debug()
                     driver.quit()
                     exit()
         except Exception as inner_exc:
             print(f"Unexpected error during start/stop button checks: {inner_exc}")
             print("After waiting for start/stop:\n"+driver.current_url)
+            dump_debug()
             driver.quit()
             sys.exit()
-    # Now ensure it’s clickable
+    # Native click, JS fallback
     driver.execute_script("arguments[0].scrollIntoView(true);", stopworld)
-    driver.execute_script("arguments[0].click();", stopworld)
-    print("Clicked stop")
+    try:
+        stopworld.click()
+        print("Clicked stop (native)")
+    except Exception:
+        driver.execute_script("arguments[0].click();", stopworld)
+        print("Clicked stop (js fallback)")
     time.sleep(2)
+    for i in range(6):
+        time.sleep(5)
+        try:
+            body_text = driver.find_element(By.TAG_NAME, "body").text
+            print(f"+{(i+1)*5}s STATE:", " | ".join(body_text.split("\n")[:14])[:400])
+        except Exception as e:
+            print("state read error:", e)
 
 except Exception as e:
-    print(f"Error occurred(start): {e}")
+    print(f"Error occurred(stop): {e}")
 
 
 
@@ -232,4 +272,7 @@ except Exception:
 for entry in driver.get_log('browser'):
     print(entry)
 '''
+
+# Final debug dump before quitting
+dump_debug()
 driver.quit()
