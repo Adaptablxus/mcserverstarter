@@ -201,11 +201,23 @@ try:
                 try:
                     body_text = driver.find_element(By.TAG_NAME, "body").text
                     if "Starting" in body_text:
-                        print("World is still starting - stop again in a minute.")
-                        dump_debug()
-                        driver.quit()
-                        sys.exit()
-                    startworld = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[normalize-space()='Start World' or normalize-space()='Unarchive']")))
+                        print("World is still starting - waiting for boot to finish, then stopping it.")
+                        for attempt in range(24):
+                            time.sleep(10)
+                            try:
+                                stopworld = WebDriverWait(driver, 2).until(
+                                    EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'btn-error') and contains(@class, 'join-item') and not(@disabled)]"))
+                                )
+                                print(f"Stop button became clickable after ~{(attempt+1)*10}s - proceeding to click.")
+                                break
+                            except Exception:
+                                if attempt == 23:
+                                    print("World never finished starting in time - giving up; run /stop again later.")
+                                    dump_debug()
+                                    driver.quit()
+                                    sys.exit()
+                    else:
+                        startworld = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[normalize-space()='Start World' or normalize-space()='Unarchive']")))
                     print("Start button found - world already stopped.")
                     driver.quit()
                     sys.exit()
